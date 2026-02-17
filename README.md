@@ -11,6 +11,7 @@ You are **not** the player in the traditional sense --- you are an
 You may adjust policies and approve upgrades, but the simulation never
 stops running.
 
+![Harvest Protocol: Earth Screenshot](screenshot.png)
 ------------------------------------------------------------------------
 
 # 👽 Core Concept
