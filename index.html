@@ -1,0 +1,1828 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>🛸 Harvest Protocol: Earth — Autoplay Incremental</title>
+  <style>
+    :root{
+      --bg:#0b0f14;
+      --panel:#0f1621;
+      --panel2:#0c1320;
+      --text:#e7eef9;
+      --muted:#a7b4c8;
+      --line:rgba(231,238,249,0.10);
+      --glow:rgba(120,195,255,0.18);
+      --good:rgba(120,255,190,0.85);
+      --warn:rgba(255,210,120,0.85);
+      --bad:rgba(255,120,150,0.85);
+      --fill:rgba(231,238,249,0.75);
+      --fill2:rgba(231,238,249,0.35);
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      --r: 14px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%; margin:0; background:radial-gradient(1200px 700px at 70% -10%, var(--glow), transparent 55%), var(--bg); color:var(--text); font-family:var(--sans);}
+    a{color:inherit}
+    .app{height:100%; display:grid; grid-template-rows:auto 1fr auto; gap:10px; padding:12px;}
+    .topbar{
+      display:grid;
+      grid-template-columns: 1fr 420px 1fr;
+      gap:10px;
+      align-items:stretch;
+    }
+    .card{
+      background:linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+      border:1px solid var(--line);
+      border-radius:var(--r);
+      box-shadow: 0 10px 40px rgba(0,0,0,0.35);
+      overflow:hidden;
+    }
+    .pad{padding:10px 12px;}
+    .statgrid{display:grid; grid-template-columns: repeat(3, 1fr); gap:8px;}
+    .stat{
+      background:rgba(0,0,0,0.18);
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:8px 10px;
+      display:flex;
+      flex-direction:column;
+      gap:3px;
+    }
+    .stat .k{font-size:12px; color:var(--muted); letter-spacing:.02em; display:flex; align-items:center; gap:6px}
+    .stat .v{font-family:var(--mono); font-size:15px; display:flex; align-items:baseline; gap:10px}
+    .stat .v small{color:var(--muted); font-size:12px}
+    .turnbar{
+      height:100%;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      gap:8px;
+    }
+    .turnbar-top{display:flex; justify-content:space-between; align-items:baseline; gap:12px}
+    .turnbar-top .label{font-weight:800; letter-spacing:0.10em; font-size:11px; opacity:.95}
+    .turnbar-top .eta{font-family:var(--mono); font-size:12px; color:var(--muted)}
+    .bar{
+      height:12px;
+      border-radius:999px;
+      background:rgba(255,255,255,0.10);
+      border:1px solid var(--line);
+      overflow:hidden;
+      position:relative;
+    }
+    .bar .fill{
+      height:100%;
+      width:100%;
+      transform:scaleX(0);
+      transform-origin:left center;
+      background:var(--fill);
+      transition:transform 60ms linear;
+    }
+    .bar .fill.alt{background:var(--fill2)}
+    .bar .ticks{
+      position:absolute; inset:0; display:flex; pointer-events:none; opacity:.6;
+    }
+    .bar .ticks span{
+      flex:1; border-right:1px dashed rgba(231,238,249,0.12);
+    }
+    .bar .ticks span:last-child{border-right:none}
+    .bar .marker{
+      position:absolute; top:-3px; bottom:-3px;
+      width:2px;
+      background:rgba(255,255,255,0.75);
+      box-shadow:0 0 10px rgba(255,255,255,0.25);
+      opacity:.85;
+    }
+    .bar .marker.cap{background:rgba(255,210,120,0.9)}
+    .bar .marker.crit{background:rgba(255,120,150,0.9)}
+    .pulse{
+      animation:pulse .18s ease-out 1;
+    }
+    @keyframes pulse{
+      0%{filter:brightness(1)}
+      60%{filter:brightness(1.6)}
+      100%{filter:brightness(1)}
+    }
+
+    .mid{
+      display:grid;
+      grid-template-columns: 1.25fr 0.75fr;
+      gap:10px;
+      min-height:0;
+    }
+    .tabs{
+      display:flex;
+      gap:6px;
+      padding:8px;
+      border-bottom:1px solid var(--line);
+      background:rgba(0,0,0,0.15);
+    }
+    .tab{
+      border:1px solid var(--line);
+      background:rgba(0,0,0,0.18);
+      color:var(--muted);
+      border-radius:12px;
+      padding:8px 10px;
+      font-size:12px;
+      cursor:pointer;
+      user-select:none;
+      display:flex; gap:8px; align-items:center;
+    }
+    .tab.active{
+      color:var(--text);
+      border-color: rgba(231,238,249,0.18);
+      background:rgba(231,238,249,0.06);
+    }
+    .panelbody{padding:10px 12px; height:100%; overflow:auto;}
+    .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+    .spacer{flex:1}
+    .btn{
+      border:1px solid var(--line);
+      background:rgba(0,0,0,0.18);
+      color:var(--text);
+      border-radius:12px;
+      padding:8px 10px;
+      cursor:pointer;
+      user-select:none;
+      font-size:12px;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+    }
+    .btn:hover{background:rgba(255,255,255,0.06)}
+    .btn:active{transform:translateY(1px)}
+    .btn.secondary{color:var(--muted)}
+    .btn.danger{border-color:rgba(255,120,150,0.35)}
+    .btn.good{border-color:rgba(120,255,190,0.35)}
+    .select, .range{
+      border:1px solid var(--line);
+      background:rgba(0,0,0,0.18);
+      color:var(--text);
+      border-radius:12px;
+      padding:8px 10px;
+      font-size:12px;
+      outline:none;
+    }
+    .range{padding:0 10px; height:34px; display:flex; align-items:center}
+    input[type="range"]{width:220px}
+    .help{color:var(--muted); font-size:12px; line-height:1.35}
+    .grid2{display:grid; grid-template-columns: 1fr 1fr; gap:10px}
+    .mine{
+      border:1px solid var(--line);
+      background:rgba(0,0,0,0.18);
+      border-radius:14px;
+      padding:10px;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+    .mine-top{
+      display:flex; gap:10px; align-items:flex-start;
+    }
+    .mine-title{
+      font-weight:800;
+      letter-spacing:.02em;
+    }
+    .mine-sub{
+      color:var(--muted);
+      font-size:12px;
+      margin-top:2px;
+    }
+    .pill{
+      font-family:var(--mono);
+      font-size:11px;
+      color:var(--muted);
+      border:1px solid var(--line);
+      border-radius:999px;
+      padding:4px 8px;
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      background:rgba(255,255,255,0.04);
+      white-space:nowrap;
+    }
+    .mine-bars{display:grid; gap:7px}
+    .barline{display:grid; grid-template-columns: 140px 1fr 88px; gap:10px; align-items:center}
+    .barline .lbl{font-size:12px; color:var(--muted); display:flex; align-items:center; gap:6px}
+    .barline .val{font-family:var(--mono); font-size:12px; color:var(--muted); text-align:right}
+    .mini{
+      height:10px;
+      border-radius:999px;
+      background:rgba(255,255,255,0.10);
+      border:1px solid var(--line);
+      overflow:hidden;
+      position:relative;
+    }
+    .mini .fill{
+      height:100%;
+      width:100%;
+      transform:scaleX(0);
+      transform-origin:left center;
+      background:var(--fill);
+      transition:transform 120ms linear;
+    }
+    .mini .fill.good{background:var(--good)}
+    .mini .fill.warn{background:var(--warn)}
+    .mini .fill.bad{background:var(--bad)}
+    .queue{
+      border:1px dashed rgba(231,238,249,0.18);
+      border-radius:14px;
+      padding:10px;
+      background:rgba(0,0,0,0.12);
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+    .qitem{
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:8px 10px;
+      background:rgba(0,0,0,0.18);
+      display:grid;
+      grid-template-columns: 1fr auto;
+      gap:8px;
+      align-items:center;
+    }
+    .qitem .t{font-size:12px}
+    .qitem .t b{font-family:var(--mono)}
+    .log{
+      height:210px;
+      overflow:auto;
+      padding:10px 12px;
+      font-family:var(--mono);
+      font-size:12px;
+      line-height:1.35;
+      background:rgba(0,0,0,0.18);
+      border-top:1px solid var(--line);
+    }
+    .log .line{margin-bottom:6px; color:rgba(231,238,249,0.90)}
+    .log .muted{color:rgba(167,180,200,0.95)}
+    .log .good{color:rgba(120,255,190,0.95)}
+    .log .warn{color:rgba(255,210,120,0.95)}
+    .log .bad{color:rgba(255,120,150,0.95)}
+    .rightcol{min-height:0; display:grid; grid-template-rows: auto 1fr; gap:10px;overflow-y:auto;}
+    .proto{
+      display:grid;
+      gap:10px;
+    }
+    .proto-card{
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:10px;
+      background:rgba(0,0,0,0.18);
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+    .proto-head{display:flex; justify-content:space-between; gap:10px; align-items:baseline}
+    .proto-head .name{font-weight:800}
+    .proto-head .tag{font-family:var(--mono); font-size:11px; color:var(--muted)}
+    .splitbars{display:grid; gap:7px}
+    .splitbars .barline{grid-template-columns: 110px 1fr 88px}
+    .footer{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px;
+      align-items:stretch;
+    }
+    .kbd{
+      font-family:var(--mono);
+      border:1px solid var(--line);
+      border-bottom-color:rgba(231,238,249,0.18);
+      background:rgba(0,0,0,0.18);
+      border-radius:10px;
+      padding:2px 6px;
+      color:var(--muted);
+      font-size:11px;
+    }
+    .notice{font-size:12px; color:var(--muted)}
+    @media (max-width: 1180px){
+      .topbar{grid-template-columns:1fr}
+      .mid{grid-template-columns:1fr}
+      .footer{grid-template-columns:1fr}
+    }
+.protocols-panel{
+  min-height:0;          /* required for grid children to scroll */
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+
+.protocols-panel .proto{
+  overflow-y:auto;
+  max-height:100%;
+  padding-right:4px;     /* space for scrollbar */
+}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- TOP -->
+    <div class="topbar">
+      <div class="card pad">
+        <div class="statgrid">
+          <div class="stat">
+            <div class="k">💰 Gold</div>
+            <div class="v"><span id="gold">0</span> <small id="gRate">(+0/t)</small></div>
+            <div class="mini" title="Storage">
+              <div class="fill alt" id="goldCapFill"></div>
+            </div>
+          </div>
+          <div class="stat">
+            <div class="k">📊 Data</div>
+            <div class="v"><span id="data">0</span> <small id="dRate">(+0/t)</small></div>
+            <div class="mini" title="Storage">
+              <div class="fill alt" id="dataCapFill"></div>
+            </div>
+          </div>
+          <div class="stat">
+            <div class="k">⚡ Energy</div>
+            <div class="v"><span id="energy">0</span> <small id="eRate">(+0/t)</small></div>
+            <div class="mini" title="Storage">
+              <div class="fill alt" id="energyCapFill"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card pad">
+        <div class="turnbar">
+          <div class="turnbar-top">
+            <div class="label">👽 ALIEN TURN</div>
+            <div class="eta" id="turnEta">Next in 5.0s</div>
+          </div>
+          <div class="bar" aria-label="Alien turn cooldown">
+            <div class="ticks" aria-hidden="true">
+              <span></span><span></span><span></span><span></span><span></span>
+            </div>
+            <div class="fill" id="turnFill"></div>
+          </div>
+
+          <div class="turnbar-top" style="margin-top:4px">
+            <div class="label">🌐 SUSPICION</div>
+            <div class="eta" id="susText">0.0%</div>
+          </div>
+          <div class="bar" aria-label="Global suspicion">
+            <div class="ticks" aria-hidden="true">
+              <span></span><span></span><span></span><span></span><span></span>
+            </div>
+            <div class="marker cap" id="capMarker" title="Policy cap"></div>
+            <div class="marker crit" id="critMarker" title="Critical"></div>
+            <div class="fill alt" id="susFill"></div>
+          </div>
+          <div class="help" id="aiIntent">🧠 Intent: Maintaining suspicion under policy cap.</div>
+        </div>
+      </div>
+
+      <div class="card pad">
+        <div class="statgrid">
+          <div class="stat">
+            <div class="k">⏱️ Time Played</div>
+            <div class="v"><span id="timePlayed">00:00:00</span></div>
+            <div class="help">Autoplay is always on. You can intervene via policies.</div>
+          </div>
+          <div class="stat">
+            <div class="k">🌀 Rewrite Charge</div>
+            <div class="v"><span id="rewritePct">0%</span> <small id="rewriteHint">Dormant</small></div>
+            <div class="mini" title="Timeline rewrite charge">
+              <div class="fill bad" id="rewriteFill"></div>
+            </div>
+          </div>
+          <div class="stat">
+            <div class="k">📦 Queue Load</div>
+            <div class="v"><span id="qLoad">0/0</span> <small id="qHint">idle</small></div>
+            <div class="mini" title="Build slots used">
+              <div class="fill warn" id="qFill"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MID -->
+    <div class="mid">
+      <div class="card" id="leftCard">
+        <div class="tabs">
+          <div class="tab active" data-tab="mines">⛏️ Mines</div>
+          <div class="tab" data-tab="policies">🎛️ Policies</div>
+          <div class="tab" data-tab="tech">🧬 Tech & Queue</div>
+          <div class="tab" data-tab="events">🕵️ Events</div>
+        </div>
+
+        <div class="panelbody" id="tab-mines"></div>
+        <div class="panelbody" id="tab-policies" style="display:none"></div>
+        <div class="panelbody" id="tab-tech" style="display:none"></div>
+        <div class="panelbody" id="tab-events" style="display:none"></div>
+      </div>
+
+      <div class="rightcol">
+        <div class="card pad">
+          <div class="row">
+            <div class="pill">🛰️ Status: <b id="status">OPERATIONAL</b></div>
+            <div class="pill">🧾 Turn: <b id="turnNum">0</b></div>
+            <div class="pill">🌍 Colonies: <b id="mineCount">0</b></div>
+            <div class="spacer"></div>
+            <button class="btn secondary" id="btnClearLog">🧹 Clear Log</button>
+          </div>
+          <div class="help" style="margin-top:8px">
+            You are an observer. The Overseer AI runs the harvest every <span class="kbd">5s</span>.
+            Interference is optional: change policy knobs, approve queued upgrades, or force a protocol.
+          </div>
+        </div>
+
+        <div class="card pad protocols-panel">
+          <div class="row" style="margin-bottom:8px">
+            <div style="font-weight:800">🧯 Suppression Protocols</div>
+            <div class="spacer"></div>
+            <button class="btn danger" id="btnForceProtocol">🚨 Force Protocol</button>
+          </div>
+          <div class="proto" id="protocols"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="footer">
+      <div class="card">
+        <div class="pad" style="display:flex; justify-content:space-between; align-items:baseline; gap:10px">
+          <div style="font-weight:800">📟 Overseer Log</div>
+          <div class="notice">Auto-scroll enabled ✅</div>
+        </div>
+        <div class="log" id="log"></div>
+      </div>
+
+      <div class="card pad">
+        <div style="font-weight:800; margin-bottom:8px">🧾 Quick Facts</div>
+        <div class="help">
+          • “They still believe Fort Knox has gold, hahaha.” appears as contextual commentary.<br>
+          • Local awareness per mine feeds global suspicion (0–100%).<br>
+          • Reaching 100% suspicion triggers a 🌀 Timeline Rewrite (soft reset + permanent tech bonus).<br>
+          • Progress bars indicate cooldowns, build timers, investigations, storage, and stability signals everywhere.
+        </div>
+        <div class="row" style="margin-top:10px; flex-wrap:wrap">
+          <button class="btn good" id="btnSave">💾 Save</button>
+          <button class="btn" id="btnLoad">📂 Load</button>
+          <button class="btn danger" id="btnHardReset">🧨 Hard Reset</button>
+          <div class="spacer"></div>
+          <div class="pill">🧪 Version: <b>0.1</b></div>
+        </div>
+        <div class="help" style="margin-top:8px">
+          Save/Load uses <span class="kbd">localStorage</span> in your browser (no server).
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  // =========================
+  // Utility
+  // =========================
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const lerp  = (a, b, t) => a + (b - a) * t;
+  const fmtInt = (n) => Math.floor(n).toLocaleString();
+  const fmt1 = (n) => (Math.round(n * 10) / 10).toFixed(1);
+  const fmt2 = (n) => (Math.round(n * 100) / 100).toFixed(2);
+  const nowISO = () => new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+
+  function weightedPick(items) {
+    // items: [{w, v}]
+    const total = items.reduce((s, it) => s + it.w, 0);
+    let r = Math.random() * total;
+    for (const it of items) {
+      r -= it.w;
+      if (r <= 0) return it.v;
+    }
+    return items[items.length-1].v;
+  }
+
+  // =========================
+  // Game State
+  // =========================
+  const TURN_MS = 5000;
+
+  const state = {
+    startedAt: performance.now(),
+    lastTurnAt: performance.now(),
+    turn: 0,
+
+    resources: { gold: 0, data: 0, energy: 0 },
+    caps: { gold: 5000, data: 2500, energy: 1200 },
+
+    permanent: { efficiencyBonus: 0 }, // prestige bonus
+
+    suspicion: 0,      // 0..100
+    rewriteCharge: 0,  // 0..100
+
+    policy: {
+      risk: 0.5,              // 0..1 (conservative..aggressive)
+      suspicionCap: 60,       // 0..100
+      preferredProtocol: "AUTO", // AUTO | MEMORY_DRIFT | MEDIA_FLOOD | ECON_DISTRACTION
+      upgrades: "AUTO",       // AUTO | REQUIRE_APPROVAL
+      expansion: "AUTO",      // AUTO | MANUAL
+    },
+
+    build: {
+      slots: 2,
+      active: [], // {id, type, mineId, label, startedAt, durMs, approved, progress01}
+      queue: [],  // same but pending
+    },
+
+    protocols: {
+      MEMORY_DRIFT: { name:"🧠 Memory Drift", icon:"🧠", activeMs:0, cooldownMs:0, durMs:12000, cdMs:45000 },
+      MEDIA_FLOOD: { name:"📺 Media Flood", icon:"📺", activeMs:0, cooldownMs:0, durMs:10000, cdMs:40000 },
+      ECON_DISTRACTION: { name:"💸 Economic Distraction", icon:"💸", activeMs:0, cooldownMs:0, durMs:8000,  cdMs:30000 },
+    },
+
+    events: {
+      investigations: [], // {id, mineId, label, prog01, speedPerTurn, resolved}
+      viral: [],          // {id, mineId, label, prog01, speedPerTurn, resolved}
+    },
+
+    mines: [], // filled below
+
+    log: [],
+  };
+
+  // Seed mines (archetypes; not tied to geopolitics)
+  const regions = ["🗻 Mountain", "🏜️ Desert", "🌲 Boreal", "🌊 Offshore", "🏞️ Highlands", "🧊 Arctic Edge"];
+  const mineNamesA = ["Aurora", "Basilisk", "Cinder", "Obsidian", "Kestrel", "Mirage", "Vermilion", "Sable", "Helix", "Gilded"];
+  const mineNamesB = ["Basin", "Ridge", "Vein", "Shaft", "Quarry", "Cavern", "Run", "Field", "Spur", "Delta"];
+  function mkMine(i){
+    const region = regions[i % regions.length];
+    const name = `${mineNamesA[Math.floor(Math.random()*mineNamesA.length)]} ${mineNamesB[Math.floor(Math.random()*mineNamesB.length)]}`;
+    const base = 18 + Math.floor(Math.random()*10);        // gold per turn baseline
+    const vis  = 0.22 + Math.random()*0.35;                // 0..1-ish
+    return {
+      id: `mine_${i}`,
+      name,
+      region,
+      baseOutput: base,
+      visibility: vis,
+      automation: 1,         // 1..10
+      throttle: 1.0,         // 0.2..1.0
+      localAwareness: 0.0,   // 0..100
+      suppressionField: 0.0, // 0..100 (drains)
+      infra: 1,              // 1..10
+      maxPotential: base * 3.5,
+    };
+  }
+  for (let i=0; i<4; i++) state.mines.push(mkMine(i));
+
+  // =========================
+  // Humor / Log messages
+  // =========================
+  const commentary = {
+    harvest: [
+      "💰 Harvest complete. Humans call it ‘economic growth’.",
+      "⛏️ Output stable. Anomalies within acceptable denial thresholds.",
+      "🧾 Audit: They still believe Fort Knox has gold, hahaha.",
+      "📈 Gold velocity increased. Humans blame ‘productivity apps’.",
+    ],
+    awareness: [
+      "👁️ A human noticed a pattern. Others called him ‘paranoid’. Crisis averted.",
+      "🕵️ Conspiracy forums active. Credibility low. Engagement high.",
+      "🧠 Minor awakening detected. Deploying distraction if needed.",
+    ],
+    protocol: [
+      "📺 Launching new entertainment series. Attention successfully redirected.",
+      "🧠 Memory drift wave complete. They now blame ‘burnout’.",
+      "💸 Economic distraction deployed. Humans resume consumer rituals.",
+    ],
+    upgrade: [
+      "🛠️ Infrastructure expanded. Humans report ‘routine maintenance’.",
+      "🤖 Automation improved. Humans call it ‘innovation’.",
+      "🛰️ Optimization applied. Their spreadsheets remain unaware.",
+    ],
+    rewrite: [
+      "🌀 Timeline rewritten. Humans once again believe everything is normal.",
+      "☕ Global awakening avoided. Coffee consumption returning to baseline.",
+      "🧬 Reality patch deployed. Mandela Effect coverage holding.",
+    ]
+  };
+
+  function logLine(text, cls=""){
+    const line = { t: nowISO(), text, cls };
+    state.log.push(line);
+    if (state.log.length > 500) state.log.shift();
+    renderLog();
+  }
+
+  // =========================
+  // Protocol effects
+  // =========================
+  function protocolEffectMultiplier(){
+    // Returns { awarenessMult, suspicionDeltaPerTurn, goldMult }
+    // - active protocols reduce awareness gain and/or suspicion.
+    let awarenessMult = 1.0;
+    let suspicionDelta = 0.0;
+    let goldMult = 1.0;
+
+    const p = state.protocols;
+    if (p.MEMORY_DRIFT.activeMs > 0){
+      awarenessMult *= 0.65;
+      suspicionDelta -= 1.8;
+    }
+    if (p.MEDIA_FLOOD.activeMs > 0){
+      awarenessMult *= 0.72;
+      suspicionDelta -= 1.2;
+      // Convert a tiny amount of Data into "stability"
+      const spend = Math.min(state.resources.data, 45);
+      state.resources.data -= spend;
+      suspicionDelta -= spend / 120; // up to ~0.375
+    }
+    if (p.ECON_DISTRACTION.activeMs > 0){
+      awarenessMult *= 0.82;
+      goldMult *= 1.18;
+      suspicionDelta -= 0.7;
+      // costs energy to keep "the circus" running
+      state.resources.energy = Math.max(0, state.resources.energy - 18);
+    }
+    return { awarenessMult, suspicionDeltaPerTurn: suspicionDelta, goldMult };
+  }
+
+  function canUseProtocol(key){
+    const pr = state.protocols[key];
+    return pr.cooldownMs <= 0 && pr.activeMs <= 0;
+  }
+
+  function activateProtocol(key, forced=false){
+    const pr = state.protocols[key];
+    if (!canUseProtocol(key)) return false;
+    pr.activeMs = pr.durMs;
+    pr.cooldownMs = pr.cdMs;
+    const msg = weightedPick([
+      {w: 2, v: `${pr.icon} Protocol online: ${pr.name}.`},
+      {w: 1, v: commentary.protocol[Math.floor(Math.random()*commentary.protocol.length)]},
+    ]);
+    logLine(msg, "warn");
+    if (forced) logLine("🧷 Operator override registered. Aliens unimpressed.", "muted");
+    return true;
+  }
+
+  function chooseProtocolByPolicy(){
+    const pref = state.policy.preferredProtocol;
+    if (pref !== "AUTO" && canUseProtocol(pref)) return pref;
+
+    // AUTO: pick best available based on situation
+    const sus = state.suspicion;
+    const weights = [];
+    // If very high suspicion, favor stronger reduction
+    weights.push({ w: sus > 80 ? 4 : 2, v: "MEMORY_DRIFT" });
+    weights.push({ w: sus > 65 ? 3 : 2, v: "MEDIA_FLOOD" });
+    weights.push({ w: sus > 55 ? 2 : 1.5, v: "ECON_DISTRACTION" });
+
+    // Remove unavailable
+    const filtered = weights.filter(w => canUseProtocol(w.v));
+    if (!filtered.length) return null;
+    return weightedPick(filtered);
+  }
+
+  // =========================
+  // Builds / Upgrades
+  // =========================
+  let buildId = 0;
+  function queueBuild({type, mineId, label, durMs, cost, requiresApproval}){
+    // pay upfront only if approved; if requireApproval, reserve nothing.
+    const item = {
+      id: `b_${++buildId}`,
+      type, mineId, label,
+      durMs,
+      cost,
+      approved: !requiresApproval,
+      startedAt: null,
+      progress01: 0,
+    };
+
+    if (requiresApproval){
+      state.build.queue.push(item);
+      logLine(`🧾 Upgrade queued (awaiting approval): ${label}`, "muted");
+    } else {
+      if (!payCost(cost)) return false;
+      state.build.queue.push(item);
+      logLine(`🛠️ Upgrade queued: ${label}`, "muted");
+    }
+    return true;
+  }
+
+  function payCost(cost){
+    // cost: {gold,data,energy}
+    for (const k of ["gold","data","energy"]){
+      if ((cost[k]||0) > state.resources[k]) return false;
+    }
+    for (const k of ["gold","data","energy"]){
+      state.resources[k] -= (cost[k]||0);
+    }
+    return true;
+  }
+
+  function approveBuild(id){
+    const idx = state.build.queue.findIndex(x => x.id === id);
+    if (idx === -1) return false;
+    const item = state.build.queue[idx];
+    if (item.approved) return true;
+    if (!payCost(item.cost)){
+      logLine(`❌ Approval failed (insufficient resources): ${item.label}`, "bad");
+      return false;
+    }
+    item.approved = true;
+    logLine(`✅ Approved: ${item.label}`, "good");
+    return true;
+  }
+
+  function tryStartBuilds(){
+    // Move approved queued items into active if slots available
+    const available = state.build.slots - state.build.active.length;
+    if (available <= 0) return;
+
+    // prioritize approved items
+    const startableIdx = [];
+    for (let i=0; i<state.build.queue.length; i++){
+      const it = state.build.queue[i];
+      if (it.approved && it.startedAt === null) startableIdx.push(i);
+    }
+    for (let s=0; s<available && startableIdx.length; s++){
+      const i = startableIdx.shift();
+      const it = state.build.queue.splice(i,1)[0];
+      it.startedAt = performance.now();
+      it.progress01 = 0;
+      state.build.active.push(it);
+      logLine(`🏗️ Build started: ${it.label}`, "muted");
+      // re-index list
+      for (let j=0; j<startableIdx.length; j++) startableIdx[j] -= 1;
+    }
+  }
+
+  function advanceBuilds(){
+    const now = performance.now();
+    const done = [];
+    for (const it of state.build.active){
+      const t = clamp((now - it.startedAt) / it.durMs, 0, 1);
+      it.progress01 = t;
+      if (t >= 1) done.push(it);
+    }
+    if (!done.length) return;
+
+    for (const it of done){
+      // apply effects
+      if (it.type === "AUTO_UPGRADE"){
+        const m = state.mines.find(x=>x.id===it.mineId);
+        if (m){
+          m.automation = clamp(m.automation + 1, 1, 10);
+          m.infra = clamp(m.infra + 1, 1, 10);
+          // more output, more visibility pressure
+          m.maxPotential *= 1.08;
+        }
+      } else if (it.type === "NEW_MINE"){
+        const m = mkMine(state.mines.length);
+        // new mines start with some awareness from disturbance
+        m.localAwareness = 6 + Math.random()*4;
+        state.mines.push(m);
+      } else if (it.type === "BUILD_SLOT"){
+        state.build.slots = clamp(state.build.slots + 1, 1, 6);
+      }
+      logLine(weightedPick([{w:2, v: `✅ Completed: ${it.label}`},{w:1, v: commentary.upgrade[Math.floor(Math.random()*commentary.upgrade.length)]}]), "good");
+      // remove from active
+      const idx = state.build.active.findIndex(x=>x.id===it.id);
+      if (idx !== -1) state.build.active.splice(idx,1);
+    }
+  }
+
+  // =========================
+  // Events (Investigations / Viral)
+  // =========================
+  let eventId = 0;
+  function maybeSpawnEvents(){
+    // Based on high local awareness, spawn investigations or viral leaks
+    for (const m of state.mines){
+      const a = m.localAwareness;
+      if (a < 35) continue;
+
+      const chance = clamp((a - 35) / 65, 0, 1); // 0..1
+      // spawn investigation sometimes
+      if (Math.random() < chance * 0.12 && state.events.investigations.length < 6){
+        state.events.investigations.push({
+          id: `ev_i_${++eventId}`,
+          mineId: m.id,
+          label: `🕵️ Investigation: ${m.name}`,
+          prog01: 0,
+          speedPerTurn: 0.06 + Math.random()*0.08,
+          resolved: false
+        });
+        logLine(`🕵️ Investigation opened near ${m.name}. Humans request “transparency”.`, "warn");
+      }
+      // spawn viral event
+      if (Math.random() < chance * 0.10 && state.events.viral.length < 5){
+        state.events.viral.push({
+          id: `ev_v_${++eventId}`,
+          mineId: m.id,
+          label: `📹 Viral Footage: ${m.name}`,
+          prog01: 0,
+          speedPerTurn: 0.08 + Math.random()*0.10,
+          resolved: false
+        });
+        logLine(`📹 Phone video uploaded: “WEIRD LIGHTS AT ${m.name.toUpperCase()}”`, "warn");
+      }
+    }
+  }
+
+  function advanceEvents(effect){
+    // effect: protocol effect multipliers; reduce event progress growth when suppression active
+    const slow = (state.protocols.MEMORY_DRIFT.activeMs>0 || state.protocols.MEDIA_FLOOD.activeMs>0) ? 0.65 : 1.0;
+    const slow2 = state.protocols.ECON_DISTRACTION.activeMs>0 ? 0.85 : 1.0;
+    const mult = slow * slow2;
+
+    // Investigations
+    for (const ev of state.events.investigations){
+      if (ev.resolved) continue;
+      ev.prog01 = clamp(ev.prog01 + ev.speedPerTurn * mult, 0, 1);
+      if (ev.prog01 >= 1){
+        ev.resolved = true;
+        state.suspicion = clamp(state.suspicion + 12, 0, 100);
+        logLine(`🧾 Investigation concluded: “Irregularities found.” (+Suspicion)`, "bad");
+      }
+    }
+    // Viral
+    for (const ev of state.events.viral){
+      if (ev.resolved) continue;
+      ev.prog01 = clamp(ev.prog01 + ev.speedPerTurn * mult, 0, 1);
+      if (ev.prog01 >= 1){
+        ev.resolved = true;
+        state.suspicion = clamp(state.suspicion + 18, 0, 100);
+        logLine(`📣 Viral story hit mainstream. Humans argue if it's “CGI”. (+Suspicion)`, "bad");
+      }
+    }
+
+    // cull resolved after a while
+    state.events.investigations = state.events.investigations.filter(ev => !ev.resolved || Math.random() > 0.25);
+    state.events.viral = state.events.viral.filter(ev => !ev.resolved || Math.random() > 0.25);
+  }
+
+  // =========================
+  // Core Turn Logic
+  // =========================
+  function mineOutputPerTurn(m, effect){
+    // Base output scales with infra, automation, throttle, and permanent bonus
+    const infraMult = 1 + (m.infra - 1) * 0.10;
+    const autoMult  = 1 + (m.automation - 1) * 0.085;
+    const permMult  = 1 + state.permanent.efficiencyBonus;
+    const throttle  = m.throttle;
+
+    const raw = m.baseOutput * infraMult * autoMult * permMult * throttle * effect.goldMult;
+
+    // local awareness gain scales with visibility and how hard we push
+    // plus diminishing returns when suppression field is high
+    const supMult = 1 - (m.suppressionField / 100) * 0.55;
+    const awGain = (m.visibility * 10.0) * (0.55 + throttle*0.85) * supMult * effect.awarenessMult;
+
+    // suppression field decays per turn
+    m.suppressionField = clamp(m.suppressionField - 7.5, 0, 100);
+
+    // Add awareness; prevent runaway with gentle damping
+    m.localAwareness = clamp(m.localAwareness + awGain - (m.localAwareness * 0.015), 0, 100);
+
+    return raw;
+  }
+
+  function updateGlobalSuspicion(effect){
+    // global suspicion is aggregate of local awareness + event pressure + protocol deltas
+    const avgAw = state.mines.reduce((s,m)=>s+m.localAwareness,0) / Math.max(1,state.mines.length);
+    let target = avgAw * 0.92; // convert to suspicion-like scale
+
+    // add residual effects from unresolved events
+    const inv = state.events.investigations.filter(e=>!e.resolved).length;
+    const vir = state.events.viral.filter(e=>!e.resolved).length;
+    target += inv * 1.2 + vir * 1.8;
+
+    // Pull current suspicion toward target, then apply protocol delta per turn
+    const pull = lerp(state.suspicion, target, 0.22);
+    state.suspicion = clamp(pull + effect.suspicionDeltaPerTurn, 0, 100);
+  }
+
+  function aiIntentText(){
+    const cap = state.policy.suspicionCap;
+    const sus = state.suspicion;
+    const r = state.policy.risk;
+
+    if (sus >= 90) return "🧠 Intent: Emergency stabilization. Preventing mass awakening.";
+    if (sus > cap + 10) return "🧠 Intent: Lowering suspicion below cap. Deploying suppression.";
+    if (sus > cap - 5) return "🧠 Intent: Holding near cap. Minimizing visibility spikes.";
+    if (r > 0.66) return "🧠 Intent: Aggressive harvesting. Acceptable denial margins widened.";
+    if (r < 0.34) return "🧠 Intent: Conservative harvesting. Prioritizing invisibility.";
+    return "🧠 Intent: Balanced extraction. Maintaining plausible mundanity.";
+  }
+
+  function aiDecisions(){
+    // Suppression decision
+    const cap = state.policy.suspicionCap;
+    const sus = state.suspicion;
+
+    if (sus > cap){
+      const key = chooseProtocolByPolicy();
+      if (key) activateProtocol(key);
+    }
+
+    // Mine throttling (autonomous)
+    const risk = state.policy.risk;
+    for (const m of state.mines){
+      const a = m.localAwareness;
+      // if local awareness is high, reduce throttle (unless aggressive)
+      let desired = 1.0;
+      if (a > 75) desired = 0.55 - (1-risk)*0.10;
+      else if (a > 55) desired = 0.72 - (1-risk)*0.08;
+      else if (a > 35) desired = 0.86 - (1-risk)*0.05;
+      else desired = 0.95 + risk*0.05;
+
+      desired = clamp(desired, 0.35, 1.0);
+
+      // Smooth drift
+      m.throttle = clamp(lerp(m.throttle, desired, 0.35), 0.25, 1.0);
+    }
+
+    // Upgrades / expansion
+    const requireApproval = state.policy.upgrades === "REQUIRE_APPROVAL";
+    const allowExpansion  = state.policy.expansion === "AUTO";
+
+    // Don't upgrade while in crisis unless aggressive
+    if (sus > cap + 18 && state.policy.risk < 0.75) return;
+
+    // if resources near cap, spend
+    const goldFull = state.resources.gold / state.caps.gold;
+    const energyFull = state.resources.energy / state.caps.energy;
+
+    const shouldSpend = goldFull > 0.80 || energyFull > 0.85 || (state.policy.risk > 0.65 && sus < cap - 10);
+
+    // Only queue if queue isn't huge
+    if (!shouldSpend) return;
+    if (state.build.queue.length + state.build.active.length > 10) return;
+
+    // Decide what to build
+    const canAfford = (cost) => (cost.gold||0)<=state.resources.gold && (cost.data||0)<=state.resources.data && (cost.energy||0)<=state.resources.energy;
+
+    // Candidate builds
+    const candidates = [];
+
+    // Automation upgrade on a low automation mine
+    const targetMine = [...state.mines].sort((a,b)=>(a.automation - b.automation) || (a.localAwareness - b.localAwareness))[0];
+    if (targetMine && targetMine.automation < 10){
+      const cost = { gold: 180 + targetMine.automation*140, data: 35 + targetMine.automation*25, energy: 45 + targetMine.automation*20 };
+      candidates.push({
+        w: 3.2,
+        v: { type:"AUTO_UPGRADE", mineId: targetMine.id, label:`🤖 Upgrade Automation — ${targetMine.name} (Lv ${targetMine.automation+1})`, durMs: 9000 + targetMine.automation*800, cost }
+      });
+    }
+
+    // New mine (expansion)
+    if (allowExpansion && state.mines.length < 14){
+      const cost = { gold: 900 + state.mines.length*450, data: 140 + state.mines.length*70, energy: 120 + state.mines.length*55 };
+      candidates.push({
+        w: state.policy.risk > 0.66 ? 2.8 : 1.6,
+        v: { type:"NEW_MINE", mineId:null, label:`⛏️ Establish New Mine Colony (Total → ${state.mines.length+1})`, durMs: 14000 + state.mines.length*900, cost }
+      });
+    }
+
+    // Build slot tech
+    if (state.build.slots < 6){
+      const cost = { gold: 1200 + state.build.slots*900, data: 260 + state.build.slots*180, energy: 280 + state.build.slots*180 };
+      candidates.push({
+        w: 1.2,
+        v: { type:"BUILD_SLOT", mineId:null, label:`📦 Expand Build Capacity (Slots → ${state.build.slots+1})`, durMs: 16000 + state.build.slots*1200, cost }
+      });
+    }
+
+    if (!candidates.length) return;
+
+    // If requireApproval, don't need affordability now; if auto, ensure affordability
+    const pick = weightedPick(candidates);
+    if (!requireApproval && !canAfford(pick.cost)) return;
+    queueBuild({ ...pick, requiresApproval: requireApproval });
+  }
+
+  function timelineRewrite(reason="threshold"){
+    logLine("🌀 TIMELINE REWRITE INITIATED…", "bad");
+    logLine(weightedPick(commentary.rewrite.map(x => ({w:1, v:x}))), "warn");
+
+    // prestige: increase permanent efficiency bonus slightly based on how deep we went
+    const bonus = 0.03 + (state.turn * 0.00002);
+    state.permanent.efficiencyBonus = clamp(state.permanent.efficiencyBonus + bonus, 0, 2.0);
+
+    // soft reset (keep permanent)
+    state.turn = 0;
+    state.resources = { gold: 0, data: 0, energy: 0 };
+    state.suspicion = 0;
+    state.rewriteCharge = 0;
+
+    // reset mines but keep count (the aliens keep infrastructure blueprint)
+    const keepCount = Math.max(4, Math.min(state.mines.length, 10));
+    state.mines = [];
+    for (let i=0; i<keepCount; i++){
+      const m = mkMine(i);
+      m.automation = 1 + Math.floor(state.permanent.efficiencyBonus * 2);
+      m.infra = 1 + Math.floor(state.permanent.efficiencyBonus * 1.5);
+      state.mines.push(m);
+    }
+
+    // clear builds + events; reset protocols
+    state.build.active = [];
+    state.build.queue = [];
+    for (const k in state.protocols){
+      state.protocols[k].activeMs = 0;
+      state.protocols[k].cooldownMs = 0;
+    }
+    state.events.investigations = [];
+    state.events.viral = [];
+
+    logLine(`🧬 Permanent efficiency bonus is now +${Math.round(state.permanent.efficiencyBonus*100)}%`, "good");
+    renderAll();
+  }
+
+  function runAlienTurn(){
+    state.turn += 1;
+
+    // tick down protocol timers
+    for (const k in state.protocols){
+      const pr = state.protocols[k];
+      pr.activeMs = Math.max(0, pr.activeMs - TURN_MS);
+      pr.cooldownMs = Math.max(0, pr.cooldownMs - TURN_MS);
+    }
+
+    // builds
+    tryStartBuilds();
+    advanceBuilds();
+
+    // protocol effects
+    const effect = protocolEffectMultiplier();
+
+    // harvest resources
+    let totalGold = 0;
+    let totalData = 0;
+    let totalEnergy = 0;
+
+    for (const m of state.mines){
+      const g = mineOutputPerTurn(m, effect);
+      totalGold += g;
+
+      // secondary resources: data and energy scale with automation and infra
+      const d = (0.65 + (m.automation-1)*0.06) * (0.8 + (m.infra-1)*0.05) * (0.9 + state.permanent.efficiencyBonus*0.3);
+      const e = (0.55 + (m.infra-1)*0.07) * (0.85 + (m.automation-1)*0.04) * (0.9 + state.permanent.efficiencyBonus*0.25);
+      totalData += d;
+      totalEnergy += e;
+    }
+
+    // apply resource caps
+    state.resources.gold = clamp(state.resources.gold + totalGold, 0, state.caps.gold);
+    state.resources.data = clamp(state.resources.data + totalData, 0, state.caps.data);
+    state.resources.energy = clamp(state.resources.energy + totalEnergy, 0, state.caps.energy);
+
+    // events
+    maybeSpawnEvents();
+    advanceEvents(effect);
+
+    // global suspicion
+    updateGlobalSuspicion(effect);
+
+    // rewrite charge: follows suspicion
+    state.rewriteCharge = clamp(lerp(state.rewriteCharge, state.suspicion, 0.25), 0, 100);
+
+    // AI decisions
+    aiDecisions();
+
+    // occasional commentary
+    if (state.turn % 2 === 0){
+      logLine(weightedPick([
+        {w: 2.0, v: commentary.harvest[Math.floor(Math.random()*commentary.harvest.length)]},
+        {w: 1.0, v: commentary.awareness[Math.floor(Math.random()*commentary.awareness.length)]},
+      ]), "muted");
+    }
+
+    // threshold rewrite
+    if (state.suspicion >= 100){
+      timelineRewrite("suspicion");
+      return;
+    }
+
+    renderAll();
+  }
+
+  // =========================
+  // Rendering
+  // =========================
+  const el = (id) => document.getElementById(id);
+
+  function setBarScale(elm, t){
+    elm.style.transform = `scaleX(${clamp(t,0,1)})`;
+  }
+
+  function barClassFromPct(p){
+    if (p >= 0.85) return "bad";
+    if (p >= 0.55) return "warn";
+    return "good";
+  }
+
+  function renderTop(){
+    el("gold").textContent = fmtInt(state.resources.gold);
+    el("data").textContent = fmtInt(state.resources.data);
+    el("energy").textContent = fmtInt(state.resources.energy);
+
+    // rates per turn (rough: last computed totals; approximate using mine outputs)
+    const effect = protocolEffectMultiplier();
+    let g=0,d=0,e=0;
+    for (const m of state.mines){
+      const infraMult = 1 + (m.infra - 1) * 0.10;
+      const autoMult  = 1 + (m.automation - 1) * 0.085;
+      const permMult  = 1 + state.permanent.efficiencyBonus;
+      g += m.baseOutput * infraMult * autoMult * permMult * m.throttle * effect.goldMult;
+      d += (0.65 + (m.automation-1)*0.06) * (0.8 + (m.infra-1)*0.05) * (0.9 + state.permanent.efficiencyBonus*0.3);
+      e += (0.55 + (m.infra-1)*0.07) * (0.85 + (m.automation-1)*0.04) * (0.9 + state.permanent.efficiencyBonus*0.25);
+    }
+    el("gRate").textContent = `(+${fmt1(g)}/t)`;
+    el("dRate").textContent = `(+${fmt1(d)}/t)`;
+    el("eRate").textContent = `(+${fmt1(e)}/t)`;
+
+    setBarScale(el("goldCapFill"), state.resources.gold / state.caps.gold);
+    setBarScale(el("dataCapFill"), state.resources.data / state.caps.data);
+    setBarScale(el("energyCapFill"), state.resources.energy / state.caps.energy);
+
+    const sus01 = state.suspicion / 100;
+    el("susText").textContent = `${fmt1(state.suspicion)}%`;
+    setBarScale(el("susFill"), sus01);
+
+    el("rewritePct").textContent = `${Math.round(state.rewriteCharge)}%`;
+    el("rewriteHint").textContent = state.rewriteCharge < 1 ? "Dormant" : (state.rewriteCharge < 80 ? "Charging…" : "Imminent");
+    setBarScale(el("rewriteFill"), state.rewriteCharge / 100);
+
+    // markers
+    const cap = clamp(state.policy.suspicionCap, 1, 99);
+    el("capMarker").style.left = `calc(${cap}% - 1px)`;
+    el("critMarker").style.left = `calc(90% - 1px)`;
+
+    // queue load bar
+    const used = state.build.active.length;
+    const slots = state.build.slots;
+    el("qLoad").textContent = `${used}/${slots}`;
+    el("qHint").textContent = used === 0 ? "idle" : (used === slots ? "saturated" : "building");
+    setBarScale(el("qFill"), slots ? (used / slots) : 0);
+
+    // status
+    el("turnNum").textContent = state.turn.toString();
+    el("mineCount").textContent = state.mines.length.toString();
+    el("status").textContent = state.suspicion >= 90 ? "CRITICAL" : (state.suspicion >= state.policy.suspicionCap ? "SUPPRESSING" : "OPERATIONAL");
+    el("aiIntent").textContent = aiIntentText();
+  }
+
+  function renderMines(){
+    const wrap = el("tab-mines");
+    const cards = state.mines.map(m => {
+      // output efficiency bar: current output vs maxPotential
+      const effect = protocolEffectMultiplier();
+      const infraMult = 1 + (m.infra - 1) * 0.10;
+      const autoMult  = 1 + (m.automation - 1) * 0.085;
+      const permMult  = 1 + state.permanent.efficiencyBonus;
+      const out = m.baseOutput * infraMult * autoMult * permMult * m.throttle * effect.goldMult;
+
+      const eff = clamp(out / m.maxPotential, 0, 1);
+      const aw01 = m.localAwareness / 100;
+      const sup01 = m.suppressionField / 100;
+
+      const awCls = barClassFromPct(aw01);
+      const effCls = barClassFromPct(eff);
+      const supCls = barClassFromPct(1 - sup01); // inverted for "strength left" feel? We'll show actual suppression field (strength) as good when high.
+      const supStrengthCls = barClassFromPct(sup01);
+
+      return `
+        <div class="mine">
+          <div class="mine-top">
+            <div style="min-width:0">
+              <div class="mine-title">⛏️ ${m.name}</div>
+              <div class="mine-sub">${m.region} • 🤖 Auto Lv ${m.automation} • 🛠️ Infra Lv ${m.infra}</div>
+            </div>
+            <div class="spacer"></div>
+            <div class="pill">💰 <b>${fmt1(out)}</b>/t</div>
+            <div class="pill">👁️ <b>${Math.round(m.localAwareness)}%</b></div>
+          </div>
+
+          <div class="mine-bars">
+            <div class="barline">
+              <div class="lbl">💰 Output Eff.</div>
+              <div class="mini"><div class="fill ${effCls}" data-bar="eff" data-mine="${m.id}"></div></div>
+              <div class="val">${Math.round(eff*100)}%</div>
+            </div>
+
+            <div class="barline">
+              <div class="lbl">👁️ Local Awareness</div>
+              <div class="mini"><div class="fill ${awCls}" data-bar="aw" data-mine="${m.id}"></div></div>
+              <div class="val">${Math.round(m.localAwareness)}%</div>
+            </div>
+
+            <div class="barline">
+              <div class="lbl">🛡️ Suppression Field</div>
+              <div class="mini"><div class="fill ${supStrengthCls}" data-bar="sup" data-mine="${m.id}"></div></div>
+              <div class="val">${Math.round(m.suppressionField)}%</div>
+            </div>
+
+            <div class="barline">
+              <div class="lbl">🎚️ Throttle</div>
+              <div class="mini"><div class="fill alt" data-bar="thr" data-mine="${m.id}"></div></div>
+              <div class="val">${Math.round(m.throttle*100)}%</div>
+            </div>
+          </div>
+
+          <div class="row">
+            <span class="help">Observer override:</span>
+            <button class="btn secondary" data-act="suppress" data-mine="${m.id}">🛡️ Boost Field</button>
+            <label class="pill">🎚️
+              <input type="range" min="25" max="100" value="${Math.round(m.throttle*100)}" data-act="throttle" data-mine="${m.id}">
+            </label>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    wrap.innerHTML = `
+      <div class="row" style="margin-bottom:10px">
+        <div class="pill">🧬 Permanent Bonus: <b>+${Math.round(state.permanent.efficiencyBonus*100)}%</b></div>
+        <div class="pill">🧠 AI Risk: <b>${Math.round(state.policy.risk*100)}%</b></div>
+        <div class="spacer"></div>
+        <button class="btn" id="btnRewriteNow">🌀 Trigger Rewrite</button>
+      </div>
+      <div class="grid2">${cards}</div>
+    `;
+
+    // Apply bar scales after DOM
+    for (const m of state.mines){
+      const effect = protocolEffectMultiplier();
+      const infraMult = 1 + (m.infra - 1) * 0.10;
+      const autoMult  = 1 + (m.automation - 1) * 0.085;
+      const permMult  = 1 + state.permanent.efficiencyBonus;
+      const out = m.baseOutput * infraMult * autoMult * permMult * m.throttle * effect.goldMult;
+      const eff = clamp(out / m.maxPotential, 0, 1);
+      const aw01 = m.localAwareness / 100;
+      const sup01 = m.suppressionField / 100;
+      const thr01 = m.throttle;
+
+      const q = (bar) => wrap.querySelector(`.fill[data-bar="${bar}"][data-mine="${m.id}"]`);
+      setBarScale(q("eff"), eff);
+      setBarScale(q("aw"), aw01);
+      setBarScale(q("sup"), sup01);
+      setBarScale(q("thr"), thr01);
+    }
+
+    // Wire actions
+    wrap.querySelectorAll('[data-act="suppress"]').forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-mine");
+        const m = state.mines.find(x=>x.id===id);
+        if (!m) return;
+        // Boost field costs energy+data
+        const cost = { data: 45, energy: 65 };
+        if (!payCost(cost)){
+          logLine("❌ Not enough 📊 Data / ⚡ Energy to boost suppression field.", "bad");
+          return;
+        }
+        m.suppressionField = clamp(m.suppressionField + 35, 0, 100);
+        logLine(`🛡️ Suppression field boosted at ${m.name}. Humans feel “oddly sleepy”.`, "good");
+        renderAll();
+      });
+    });
+
+    wrap.querySelectorAll('input[data-act="throttle"]').forEach(sl => {
+      sl.addEventListener("input", () => {
+        const id = sl.getAttribute("data-mine");
+        const m = state.mines.find(x=>x.id===id);
+        if (!m) return;
+        m.throttle = clamp(parseInt(sl.value,10)/100, 0.25, 1.0);
+        renderAll();
+      });
+    });
+
+    wrap.querySelector("#btnRewriteNow")?.addEventListener("click", () => {
+      timelineRewrite("manual");
+    });
+  }
+
+  function renderPolicies(){
+    const wrap = el("tab-policies");
+    wrap.innerHTML = `
+      <div class="grid2">
+        <div class="queue">
+          <div style="font-weight:800">🎛️ Overseer Policy Knobs</div>
+          <div class="help">Autoplay respects these constraints. You can change them anytime.</div>
+
+          <div class="row">
+            <div class="pill">🧠 Risk Tolerance: <b id="riskPct">${Math.round(state.policy.risk*100)}%</b></div>
+            <div class="spacer"></div>
+            <div class="pill">Conservative ░░░░░ Aggressive</div>
+          </div>
+          <div class="bar" title="Risk tolerance meter">
+            <div class="ticks"><span></span><span></span><span></span><span></span><span></span></div>
+            <div class="fill" id="riskFill"></div>
+          </div>
+          <div class="row">
+            <span class="help">🎚️</span>
+            <input type="range" min="0" max="100" value="${Math.round(state.policy.risk*100)}" id="riskRange">
+            <span class="pill">🧠 AI behaves more aggressively as risk increases.</span>
+          </div>
+
+          <hr style="border:none;border-top:1px solid var(--line); margin:6px 0">
+
+          <div class="row">
+            <div class="pill">🌐 Suspicion Cap: <b id="capPct">${state.policy.suspicionCap}%</b></div>
+            <div class="spacer"></div>
+            <select class="select" id="capSelect">
+              ${[40,50,60,70,80].map(v => `<option value="${v}" ${v===state.policy.suspicionCap?'selected':''}>${v}%</option>`).join("")}
+            </select>
+          </div>
+          <div class="help">If global suspicion exceeds the cap, the AI prioritizes suppression over expansion.</div>
+
+          <div class="row" style="margin-top:8px">
+            <div class="pill">🧯 Preferred Protocol</div>
+            <select class="select" id="prefProto">
+              ${["AUTO","MEMORY_DRIFT","MEDIA_FLOOD","ECON_DISTRACTION"].map(v => `<option value="${v}" ${v===state.policy.preferredProtocol?'selected':''}>${v}</option>`).join("")}
+            </select>
+          </div>
+
+          <div class="row" style="margin-top:8px">
+            <div class="pill">🛠️ Upgrades</div>
+            <select class="select" id="upgMode">
+              <option value="AUTO" ${state.policy.upgrades==="AUTO"?'selected':''}>AUTO</option>
+              <option value="REQUIRE_APPROVAL" ${state.policy.upgrades==="REQUIRE_APPROVAL"?'selected':''}>REQUIRE_APPROVAL</option>
+            </select>
+            <div class="spacer"></div>
+            <div class="pill">⛏️ Expansion</div>
+            <select class="select" id="expMode">
+              <option value="AUTO" ${state.policy.expansion==="AUTO"?'selected':''}>AUTO</option>
+              <option value="MANUAL" ${state.policy.expansion==="MANUAL"?'selected':''}>MANUAL</option>
+            </select>
+          </div>
+          <div class="help">REQUIRE_APPROVAL queues upgrades and waits for operator approval. Expansion MANUAL prevents new mines.</div>
+        </div>
+
+        <div class="queue">
+          <div style="font-weight:800">🧾 Operator Controls</div>
+          <div class="help">Interference actions do not pause autoplay. They simply override AI decisions.</div>
+          <div class="row">
+            <button class="btn danger" id="forceProto">🚨 Force Protocol</button>
+            <button class="btn" id="approveAll">✅ Approve All</button>
+          </div>
+          <div class="help" style="margin-top:8px">
+            Forcing a protocol triggers the best available suppression immediately (or the preferred protocol if available).
+          </div>
+
+          <hr style="border:none;border-top:1px solid var(--line); margin:6px 0">
+
+          <div style="font-weight:800">📦 Storage Upgrades</div>
+          <div class="help">These increase caps so the AI can accumulate more before spending.</div>
+          <div class="row" style="margin-top:8px">
+            <button class="btn secondary" id="capGold">💰 Expand Gold Storage</button>
+            <button class="btn secondary" id="capData">📊 Expand Data Storage</button>
+            <button class="btn secondary" id="capEnergy">⚡ Expand Energy Storage</button>
+          </div>
+          <div class="help" style="margin-top:8px">
+            Costs scale. Storage bars in the top-left show fill vs cap.
+          </div>
+        </div>
+      </div>
+    `;
+
+    setBarScale(el("riskFill"), state.policy.risk);
+    el("riskRange").addEventListener("input", (e)=>{
+      state.policy.risk = clamp(parseInt(e.target.value,10)/100, 0, 1);
+      el("riskPct").textContent = `${Math.round(state.policy.risk*100)}%`;
+      setBarScale(el("riskFill"), state.policy.risk);
+      renderAll();
+    });
+    el("capSelect").addEventListener("change", (e)=>{
+      state.policy.suspicionCap = clamp(parseInt(e.target.value,10), 10, 95);
+      renderAll();
+    });
+    el("prefProto").addEventListener("change", (e)=>{
+      state.policy.preferredProtocol = e.target.value;
+      renderAll();
+    });
+    el("upgMode").addEventListener("change", (e)=>{
+      state.policy.upgrades = e.target.value;
+      logLine(`🧾 Upgrades mode set to ${state.policy.upgrades}.`, "muted");
+      renderAll();
+    });
+    el("expMode").addEventListener("change", (e)=>{
+      state.policy.expansion = e.target.value;
+      logLine(`⛏️ Expansion mode set to ${state.policy.expansion}.`, "muted");
+      renderAll();
+    });
+
+    el("forceProto").addEventListener("click", ()=> forceProtocol(true));
+    el("approveAll").addEventListener("click", ()=>{
+      let ok=0, fail=0;
+      for (const it of state.build.queue){
+        if (!it.approved){
+          approveBuild(it.id) ? ok++ : fail++;
+        }
+      }
+      logLine(`✅ Approvals: ${ok} | ❌ Failed: ${fail}`, fail? "warn":"good");
+      renderAll();
+    });
+
+    function storageCost(kind){
+      const scale = kind==="gold" ? state.caps.gold : (kind==="data" ? state.caps.data : state.caps.energy);
+      const c = Math.round(scale * 0.22);
+      return { gold: kind==="gold"? c : Math.round(c*0.7), data: kind==="data"? Math.round(c*0.65): Math.round(c*0.35), energy: kind==="energy"? Math.round(c*0.55): Math.round(c*0.28) };
+    }
+    function upgradeCap(kind, add){
+      const cost = storageCost(kind);
+      if (!payCost(cost)){
+        logLine("❌ Insufficient resources for storage expansion.", "bad");
+        return;
+      }
+      state.caps[kind] += add;
+      logLine(`📦 Storage expanded: ${kind.toUpperCase()} cap → ${fmtInt(state.caps[kind])}`, "good");
+      renderAll();
+    }
+    el("capGold").addEventListener("click", ()=> upgradeCap("gold", 2500));
+    el("capData").addEventListener("click", ()=> upgradeCap("data", 1400));
+    el("capEnergy").addEventListener("click", ()=> upgradeCap("energy", 900));
+  }
+
+  function renderTech(){
+    const wrap = el("tab-tech");
+
+    const active = state.build.active.map(it => {
+      const pct = Math.round(it.progress01*100);
+      return `
+        <div class="qitem">
+          <div class="t">🏗️ <b>${it.id}</b> — ${it.label}</div>
+          <div class="pill">⏳ ${pct}%</div>
+          <div style="grid-column:1/-1" class="mini"><div class="fill warn" style="transform:scaleX(${it.progress01})"></div></div>
+        </div>
+      `;
+    }).join("");
+
+    const queued = state.build.queue.map(it => {
+      const cost = `💰${fmtInt(it.cost.gold||0)} 📊${fmtInt(it.cost.data||0)} ⚡${fmtInt(it.cost.energy||0)}`;
+      const status = it.approved ? "READY" : "WAITING";
+      const cls = it.approved ? "good" : "warn";
+      return `
+        <div class="qitem">
+          <div class="t">🧾 <b>${it.id}</b> — ${it.label}<div class="mine-sub">${cost}</div></div>
+          <div class="row" style="justify-content:flex-end">
+            <span class="pill">${status}</span>
+            <button class="btn ${it.approved?'secondary':'good'}" data-approve="${it.id}">${it.approved ? "✅ Approved" : "✅ Approve"}</button>
+          </div>
+          <div style="grid-column:1/-1" class="mini"><div class="fill ${cls}" style="transform:scaleX(${it.approved?1:0})"></div></div>
+        </div>
+      `;
+    }).join("");
+
+    wrap.innerHTML = `
+      <div class="row" style="margin-bottom:10px">
+        <div class="pill">📦 Build Slots: <b>${state.build.slots}</b></div>
+        <div class="pill">🏗️ Active: <b>${state.build.active.length}</b></div>
+        <div class="pill">🧾 Queued: <b>${state.build.queue.length}</b></div>
+        <div class="spacer"></div>
+        <button class="btn secondary" id="btnQueueMine">⛏️ Queue New Mine</button>
+        <button class="btn secondary" id="btnQueueSlot">📦 Queue Slot Upgrade</button>
+      </div>
+
+      <div class="grid2">
+        <div class="queue">
+          <div style="font-weight:800">🏗️ Active Builds</div>
+          ${active || `<div class="help">No active builds. The aliens are… waiting.</div>`}
+        </div>
+
+        <div class="queue">
+          <div style="font-weight:800">🧾 Upgrade Queue</div>
+          ${queued || `<div class="help">Queue empty. Autoplay will queue upgrades when policy allows.</div>`}
+        </div>
+      </div>
+    `;
+
+    wrap.querySelectorAll("[data-approve]").forEach(btn => {
+      btn.addEventListener("click", ()=>{
+        approveBuild(btn.getAttribute("data-approve"));
+        renderAll();
+      });
+    });
+
+    wrap.querySelector("#btnQueueMine").addEventListener("click", ()=>{
+      if (state.policy.expansion === "MANUAL"){
+        logLine("⛔ Expansion is MANUAL. Switch to AUTO in Policies to allow automatic mine creation.", "warn");
+      }
+      const cost = { gold: 900 + state.mines.length*450, data: 140 + state.mines.length*70, energy: 120 + state.mines.length*55 };
+      const req = state.policy.upgrades === "REQUIRE_APPROVAL";
+      queueBuild({ type:"NEW_MINE", mineId:null, label:`⛏️ Establish New Mine Colony (Total → ${state.mines.length+1})`, durMs: 14000 + state.mines.length*900, cost, requiresApproval:req });
+      renderAll();
+    });
+
+    wrap.querySelector("#btnQueueSlot").addEventListener("click", ()=>{
+      const cost = { gold: 1200 + state.build.slots*900, data: 260 + state.build.slots*180, energy: 280 + state.build.slots*180 };
+      const req = state.policy.upgrades === "REQUIRE_APPROVAL";
+      queueBuild({ type:"BUILD_SLOT", mineId:null, label:`📦 Expand Build Capacity (Slots → ${state.build.slots+1})`, durMs: 16000 + state.build.slots*1200, cost, requiresApproval:req });
+      renderAll();
+    });
+  }
+
+  function renderEvents(){
+    const wrap = el("tab-events");
+
+    const inv = state.events.investigations.map(ev => {
+      const m = state.mines.find(x=>x.id===ev.mineId);
+      const name = m ? m.name : "Unknown Site";
+      const pct = Math.round(ev.prog01*100);
+      return `
+        <div class="qitem">
+          <div class="t">🕵️ Investigation — <b>${name}</b></div>
+          <div class="pill">⏳ ${pct}%</div>
+          <div style="grid-column:1/-1" class="mini">
+            <div class="fill warn" style="transform:scaleX(${ev.prog01})"></div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    const vir = state.events.viral.map(ev => {
+      const m = state.mines.find(x=>x.id===ev.mineId);
+      const name = m ? m.name : "Unknown Site";
+      const pct = Math.round(ev.prog01*100);
+      return `
+        <div class="qitem">
+          <div class="t">📹 Viral Footage — <b>${name}</b></div>
+          <div class="pill">🔥 ${pct}%</div>
+          <div style="grid-column:1/-1" class="mini">
+            <div class="fill bad" style="transform:scaleX(${ev.prog01})"></div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    wrap.innerHTML = `
+      <div class="row" style="margin-bottom:10px">
+        <div class="pill">🕵️ Investigations: <b>${state.events.investigations.filter(e=>!e.resolved).length}</b></div>
+        <div class="pill">📹 Viral: <b>${state.events.viral.filter(e=>!e.resolved).length}</b></div>
+        <div class="spacer"></div>
+        <button class="btn" id="btnNukeEvents">🧽 Scrub Internet</button>
+      </div>
+
+      <div class="grid2">
+        <div class="queue">
+          <div style="font-weight:800">🕵️ Investigations</div>
+          ${inv || `<div class="help">No active investigations. Humans remain charmingly incurious.</div>`}
+        </div>
+        <div class="queue">
+          <div style="font-weight:800">📹 Viral Events</div>
+          ${vir || `<div class="help">No viral leaks. Phones are pointed at lunch instead.</div>`}
+        </div>
+      </div>
+    `;
+
+    wrap.querySelector("#btnNukeEvents").addEventListener("click", ()=>{
+      const cost = { data: 220, energy: 260 };
+      if (!payCost(cost)){
+        logLine("❌ Not enough 📊 Data / ⚡ Energy to scrub the internet.", "bad");
+        return;
+      }
+      // reduce event progress substantially
+      for (const ev of state.events.investigations) ev.prog01 = clamp(ev.prog01 - 0.45, 0, 1);
+      for (const ev of state.events.viral) ev.prog01 = clamp(ev.prog01 - 0.55, 0, 1);
+      state.suspicion = clamp(state.suspicion - 8, 0, 100);
+      logLine("🧽 Internet scrub complete. Humans return to cat videos. (-Suspicion)", "good");
+      renderAll();
+    });
+  }
+
+  function renderProtocols(){
+    const wrap = el("protocols");
+    const cards = Object.keys(state.protocols).map(k => {
+      const pr = state.protocols[k];
+      const active01 = pr.activeMs / pr.durMs;
+      const cd01 = 1 - (pr.cooldownMs / pr.cdMs); // 0..1 fill
+      const can = canUseProtocol(k);
+
+      return `
+        <div class="proto-card">
+          <div class="proto-head">
+            <div class="name">${pr.name}</div>
+            <div class="tag">${can ? "✅ Ready" : (pr.activeMs>0 ? "🟡 Active" : "⏳ Cooldown")}</div>
+          </div>
+          <div class="splitbars">
+            <div class="barline">
+              <div class="lbl">⏳ Active</div>
+              <div class="mini"><div class="fill warn" data-proto="a_${k}"></div></div>
+              <div class="val">${pr.activeMs>0 ? `${Math.ceil(pr.activeMs/1000)}s` : "0s"}</div>
+            </div>
+            <div class="barline">
+              <div class="lbl">🧊 Cooldown</div>
+              <div class="mini"><div class="fill alt" data-proto="c_${k}"></div></div>
+              <div class="val">${pr.cooldownMs>0 ? `${Math.ceil(pr.cooldownMs/1000)}s` : "0s"}</div>
+            </div>
+          </div>
+          <div class="row">
+            <button class="btn ${can?'danger':'secondary'}" data-useproto="${k}">🧯 Activate</button>
+            <div class="spacer"></div>
+            <div class="help">Dur ${Math.round(pr.durMs/1000)}s • CD ${Math.round(pr.cdMs/1000)}s</div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    wrap.innerHTML = cards;
+
+    // set scales
+    for (const k in state.protocols){
+      const pr = state.protocols[k];
+      const active01 = clamp(pr.activeMs / pr.durMs, 0, 1);
+      const cd01 = clamp(1 - (pr.cooldownMs / pr.cdMs), 0, 1);
+      const a = wrap.querySelector(`.fill[data-proto="a_${k}"]`);
+      const c = wrap.querySelector(`.fill[data-proto="c_${k}"]`);
+      if (a) setBarScale(a, active01);
+      if (c) setBarScale(c, cd01);
+    }
+
+    wrap.querySelectorAll("[data-useproto]").forEach(btn => {
+      btn.addEventListener("click", ()=>{
+        const k = btn.getAttribute("data-useproto");
+        if (!activateProtocol(k, true)){
+          logLine("⏳ Protocol unavailable (active/cooldown).", "muted");
+        }
+        renderAll();
+      });
+    });
+  }
+
+  function renderLog(){
+    const log = el("log");
+    // render last 220 lines for performance
+    const slice = state.log.slice(-220);
+    log.innerHTML = slice.map(l => `<div class="line ${l.cls||''}"><span class="muted">[${l.t}]</span> ${l.text}</div>`).join("");
+    // auto-scroll down
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function renderAll(){
+    renderTop();
+    renderMines();
+    renderProtocols();
+
+    // render active tab content as needed
+    const activeTab = document.querySelector(".tab.active")?.getAttribute("data-tab") || "mines";
+    if (activeTab === "policies") renderPolicies();
+    if (activeTab === "tech") renderTech();
+    if (activeTab === "events") renderEvents();
+  }
+
+  // =========================
+  // Turn timer + cooldown bar
+  // =========================
+  const fillEl = el("turnFill");
+  const etaEl  = el("turnEta");
+
+  function tick(now){
+    const elapsed = now - state.lastTurnAt;
+    const t = clamp(elapsed / TURN_MS, 0, 1);
+    fillEl.style.transform = `scaleX(${t})`;
+    const remaining = Math.max(0, (TURN_MS - elapsed) / 1000);
+    etaEl.textContent = `Next in ${remaining.toFixed(1)}s`;
+
+    // time played
+    const ms = now - state.startedAt;
+    const s = Math.floor(ms/1000);
+    const hh = String(Math.floor(s/3600)).padStart(2,'0');
+    const mm = String(Math.floor((s%3600)/60)).padStart(2,'0');
+    const ss = String(s%60).padStart(2,'0');
+    el("timePlayed").textContent = `${hh}:${mm}:${ss}`;
+
+    if (elapsed >= TURN_MS){
+      runAlienTurn();
+      state.lastTurnAt = now;
+      // pulse the bar on execution
+      fillEl.classList.remove("pulse");
+      void fillEl.offsetWidth;
+      fillEl.classList.add("pulse");
+    }
+
+    requestAnimationFrame(tick);
+  }
+
+  // =========================
+  // Force protocol helper
+  // =========================
+  function forceProtocol(forced=false){
+    const key = chooseProtocolByPolicy();
+    if (!key){
+      logLine("🧯 No protocol available (cooldowns active).", "muted");
+      return;
+    }
+    activateProtocol(key, forced);
+    // Also add a small suppression field boost globally (feel-good effect)
+    for (const m of state.mines){
+      m.suppressionField = clamp(m.suppressionField + 10, 0, 100);
+    }
+    state.suspicion = clamp(state.suspicion - 2.5, 0, 100);
+    renderAll();
+  }
+
+  // =========================
+  // Tabs
+  // =========================
+  document.querySelectorAll(".tab").forEach(t => {
+    t.addEventListener("click", ()=>{
+      document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
+      t.classList.add("active");
+      const id = t.getAttribute("data-tab");
+      ["mines","policies","tech","events"].forEach(k => {
+        el(`tab-${k}`).style.display = (k===id) ? "block" : "none";
+      });
+      // render tab content
+      if (id === "policies") renderPolicies();
+      if (id === "tech") renderTech();
+      if (id === "events") renderEvents();
+    });
+  });
+
+  // Buttons
+  el("btnClearLog").addEventListener("click", ()=>{
+    state.log = [];
+    logLine("🧹 Log cleared. No evidence remains.", "muted");
+  });
+  el("btnForceProtocol").addEventListener("click", ()=> forceProtocol(true));
+
+  // Save / Load / Reset
+  function serialize(){
+    // Avoid perf-now times; store relative
+    return {
+      turn: state.turn,
+      resources: state.resources,
+      caps: state.caps,
+      permanent: state.permanent,
+      suspicion: state.suspicion,
+      rewriteCharge: state.rewriteCharge,
+      policy: state.policy,
+      build: {
+        slots: state.build.slots,
+        active: state.build.active.map(it => ({...it, startedAt:null})), // drop timers
+        queue: state.build.queue,
+      },
+      protocols: Object.fromEntries(Object.entries(state.protocols).map(([k,v]) => [k, {activeMs:v.activeMs, cooldownMs:v.cooldownMs}])),
+      events: state.events,
+      mines: state.mines,
+      log: state.log.slice(-220),
+    };
+  }
+
+  function hydrate(obj){
+    if (!obj) return false;
+    state.turn = obj.turn ?? state.turn;
+    state.resources = obj.resources ?? state.resources;
+    state.caps = obj.caps ?? state.caps;
+    state.permanent = obj.permanent ?? state.permanent;
+    state.suspicion = obj.suspicion ?? state.suspicion;
+    state.rewriteCharge = obj.rewriteCharge ?? state.rewriteCharge;
+    state.policy = obj.policy ?? state.policy;
+    state.build.slots = obj.build?.slots ?? state.build.slots;
+    state.build.queue = obj.build?.queue ?? [];
+    state.build.active = []; // resume builds fresh (simple)
+    if (obj.protocols){
+      for (const k in state.protocols){
+        state.protocols[k].activeMs = obj.protocols[k]?.activeMs ?? 0;
+        state.protocols[k].cooldownMs = obj.protocols[k]?.cooldownMs ?? 0;
+      }
+    }
+    state.events = obj.events ?? state.events;
+    state.mines = obj.mines ?? state.mines;
+    state.log = obj.log ?? state.log;
+    logLine("📂 Loaded save. The timeline remains… stable.", "good");
+    return true;
+  }
+
+  el("btnSave").addEventListener("click", ()=>{
+    const data = serialize();
+    localStorage.setItem("alienHarvestSave", JSON.stringify(data));
+    logLine("💾 Saved. Evidence archived in localStorage.", "good");
+  });
+  el("btnLoad").addEventListener("click", ()=>{
+    const raw = localStorage.getItem("alienHarvestSave");
+    if (!raw){ logLine("❌ No save found in localStorage.", "bad"); return; }
+    try{
+      const obj = JSON.parse(raw);
+      hydrate(obj);
+      renderAll();
+    }catch(e){
+      logLine("❌ Save corrupted. Humans probably touched it.", "bad");
+    }
+  });
+  el("btnHardReset").addEventListener("click", ()=>{
+    localStorage.removeItem("alienHarvestSave");
+    location.reload();
+  });
+
+  // =========================
+  // Boot
+  // =========================
+  logLine("🛸 Harvest Protocol: Earth online. Humans remain blissfully employed.", "good");
+  logLine("🧾 Note: They still believe Fort Knox has gold, hahaha.", "muted");
+  renderAll();
+  requestAnimationFrame(tick);
+
+})();
+</script>
+</body>
+</html>
